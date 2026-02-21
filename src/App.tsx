@@ -46,7 +46,9 @@ const App: Component = () => {
 
       {/* Loading */}
       <Show when={data.loading}>
-        <p class="text-center py-20 text-lg">Loading...</p>
+        <div class="flex items-center justify-center">
+          <p class="h-32 w-32 border-4 border-red-500 rounded-full animate-spin border-t-transparent border-b-transparent"></p>
+        </div>
       </Show>
 
       {/* Error */}
