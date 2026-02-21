@@ -1,5 +1,5 @@
 import type { Component } from "solid-js";
-import { createSignal, createEffect, onMount, For } from "solid-js";
+import { createSignal, For, createResource, Show } from "solid-js";
 import axios from "axios";
 
 interface Product {
@@ -7,63 +7,101 @@ interface Product {
   title: string;
   description: string;
   price: number;
+  thumbnail: string;
+  rating: number;
   [key: string]: any;
 }
 
+const fetcher = () =>
+  axios.get("https://dummyjson.com/products?limit=30").then((res) => res.data);
+
 const App: Component = () => {
-  const [count, setCount] = createSignal(0);
   const [isDark, setIsDark] = createSignal(false);
-  const [products, setProducts] = createSignal<Product[]>([]);
-  const [loading, setLoading] = createSignal(true);
-
-  onMount(() => {
-    console.log("Component mounted");
-    axios.get("https://dummyjson.com/products").then((res) => {
-      console.log(res.data);
-      setProducts(res.data.products);
-      setLoading(false);
-    });
-  });
-
-  createEffect(() => {
-    console.log("Products: ", products());
-  });
-
-  createEffect(() => {
-    console.log("Count: ", count());
-  });
-
-  createEffect(() => {
-    console.log("Is Dark: ", isDark());
-  });
+  const [data, { refetch }] = createResource(fetcher);
 
   return (
-    <>
-      <div
-        class={` flex flex-col justify-center items-center ${isDark() ? "bg-black text-white" : "bg-white text-black"}`}
+    <div
+      class={`min-h-screen ${isDark() ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+    >
+      {/* Navbar */}
+      <nav
+        class={`sticky top-0 z-10 px-6 py-4 flex items-center justify-between shadow-sm ${isDark() ? "bg-gray-800" : "bg-white"}`}
       >
-        <button onClick={() => setIsDark((prev) => !prev)}>Toggle</button>
-        <p class="text-4xl text-green-700 text-center py-20">
-          Hello {count()}!
-        </p>
-        <button onClick={() => setCount((prev) => prev + 1)}>
-          Count: {count()}
+        <h1 class="text-xl font-bold">🛒 SolidStore</h1>
+        <button
+          class={`px-4 py-2 rounded-lg text-sm font-medium ${isDark() ? "bg-gray-700 hover:bg-gray-600 text-white" : "bg-gray-200 hover:bg-gray-300 text-gray-800"}`}
+          onClick={() => setIsDark((p) => !p)}
+        >
+          {isDark() ? "☀️ Light" : "🌙 Dark"}
         </button>
-        {loading() ? (
-          <p>Loading...</p>
-        ) : (
-          <ul>
-            <For each={products()}>
-              {(product) => (
-                <li class=" py-5 text-2xl text-red-500 font-bold ">
-                  {product.title}
-                </li>
-              )}
-            </For>
-          </ul>
-        )}
+      </nav>
+
+      {/* Header */}
+      <div class="text-center py-10 px-4">
+        <h2 class="text-3xl font-bold mb-2">Our Products</h2>
+        <p class={`${isDark() ? "text-gray-400" : "text-gray-500"}`}>
+          Browse our collection
+        </p>
       </div>
-    </>
+
+      {/* Loading */}
+      <Show when={data.loading}>
+        <p class="text-center py-20 text-lg">Loading...</p>
+      </Show>
+
+      {/* Error */}
+      <Show when={data.error}>
+        <div class="text-center py-20">
+          <p class="text-red-500 mb-4">Failed to load products.</p>
+          <button
+            onClick={() => refetch()}
+            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </Show>
+
+      {/* Product Grid */}
+      <Show when={data()}>
+        <div class="max-w-6xl mx-auto px-6 pb-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <For each={data()?.products}>
+            {(product: Product) => (
+              <div
+                class={`rounded-xl overflow-hidden shadow-lg ${isDark() ? "hover:shadow-amber-100" : "hover:shadow-gray-200"}   transition-shadow ${isDark() ? "bg-gray-800" : "bg-white"}`}
+              >
+                <img
+                  src={product.thumbnail}
+                  alt={product.title}
+                  class="w-full h-48 object-cover"
+                  loading="lazy"
+                />
+                <div class="p-4">
+                  <h3 class="font-semibold text-lg mb-1 truncate">
+                    {product.title}
+                  </h3>
+                  <p
+                    class={`text-sm mb-3 line-clamp-2 ${isDark() ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    {product.description}
+                  </p>
+                  <div class="flex items-center justify-between">
+                    <span class="text-xl font-bold text-blue-500">
+                      ${product.price}
+                    </span>
+                    <span
+                      class={`text-sm ${isDark() ? "text-yellow-400" : "text-yellow-500"}`}
+                    >
+                      ⭐ {product.rating.toFixed(1)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </For>
+        </div>
+      </Show>
+    </div>
   );
 };
 
